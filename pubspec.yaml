@@ -1,0 +1,10 @@
+name: heron
+description: >
+  A static site generator.
+version: 0.0.1
+author: Istvan Soos <istvan.soos@agilord.com>
+
+homepage: https://github.com/agilord/heron
+
+environment:
+  sdk: '>=1.0.0 <2.0.0'
