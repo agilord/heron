@@ -113,7 +113,7 @@ void _processExtends(Map map) {
     if (attrObject is! List) {
       attrObject = [attrObject];
     }
-    attrObject = attrObject._map((o) => o is Map ? o : {'key': o}).toList();
+    attrObject = attrObject.map((o) => o is Map ? o : {'key': o}).toList();
 
     String source = m['source'];
     Map sourceMap = map[source];
