@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file.
 
+import 'dart:async';
+
 import 'package:mustache/mustache.dart' as mustache;
 
 import 'config.dart';
@@ -9,8 +11,8 @@ import 'data.dart';
 import 'templates.dart';
 import 'utils.dart';
 
-void processArchives(
-    Map<String, dynamic> site, List<Map<String, dynamic>> allContent) {
+Future processArchives(
+    Map<String, dynamic> site, List<Map<String, dynamic>> allContent) async {
   if (site['archives'] != null) {
     for (Map archive in site['archives']) {
       List<Map<String, dynamic>> content = allContent;
@@ -22,17 +24,19 @@ void processArchives(
       }
       var getMeta = (url) => pathMetadata.getMetadata(
           site, config.contentDir, '${config.contentDir}${url}index.html');
-      _doArchive(archive, 'sitemap', content, getMeta);
-      _doArchive(archive, 'page', content, getMeta);
-      _doArchive(archive, 'atom', content, getMeta);
+      await _doArchive(archive, 'sitemap', content, getMeta);
+      await _doArchive(archive, 'page', content, getMeta);
+      await _doArchive(archive, 'atom', content, getMeta);
     }
   }
 }
 
-void _doArchive(Map archive, String type, List<Map<String, dynamic>> content,
-    Map getMeta(url)) {
+Future _doArchive(Map archive, String type, List<Map<String, dynamic>> content,
+    Future<Map> getMeta(url)) async {
   if (archive.containsKey(type)) {
-    _group(content, archive[type]).forEach((url, list) {
+    Map<String, List<Map>> groups = _group(content, archive[type]);
+    for (String url in groups.keys) {
+      List<Map> list = groups[url];
       list.sort((a, b) => a['url'].compareTo(b['url']));
       list.sort(
           (a, b) => (b['published'] ?? '').compareTo(a['published'] ?? ''));
@@ -44,13 +48,13 @@ void _doArchive(Map archive, String type, List<Map<String, dynamic>> content,
       archive['vars']?.forEach((k, v) {
         map.putIfAbsent(k, () => v);
       });
-      getMeta(url)?.forEach((k, v) {
+      (await getMeta(url))?.forEach((k, v) {
         map.putIfAbsent(k, () => v);
       });
       String xml = templates.render(new DataMap(map));
       String outFile = url.endsWith('/') ? '${url}index.html' : url;
-      setFileContentSync('${config.buildSite}$outFile', xml);
-    });
+      await setFileContent('${config.buildSite}$outFile', xml);
+    }
   }
 }
 

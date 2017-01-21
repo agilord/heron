@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:yaml/yaml.dart' as yaml;
@@ -39,26 +40,26 @@ class DataMap {
 class PathMetadata {
   Map<String, Map<String, dynamic>> _maps = {};
 
-  Map<String, dynamic> getMetadata(
-      Map<String, dynamic> siteconfig, String baseDir, String path) {
+  Future<Map<String, dynamic>> getMetadata(
+      Map<String, dynamic> siteconfig, String baseDir, String path) async {
     List<String> paths = '/${getRelativePath(baseDir, path)}'.split('/')
       ..removeLast();
     Map<String, dynamic> map = {};
     _merge(map, siteconfig);
     for (int i = 0; i <= paths.length; i++) {
       String joined = paths.sublist(0, i).join('/');
-      Map<String, dynamic> m = _get('$baseDir/$joined');
+      Map<String, dynamic> m = await _get('$baseDir/$joined');
       _merge(map, m);
     }
     return map;
   }
 
-  Map<String, dynamic> _get(String p) {
+  Future<Map<String, dynamic>> _get(String p) async {
     Map<String, dynamic> m = _maps[p];
     if (m == null) {
       File f = new File('$p/META.yaml');
       if (f.existsSync()) {
-        m = yaml.loadYaml(f.readAsStringSync());
+        m = yaml.loadYaml(await f.readAsString());
         _maps[p] = m;
       }
     }

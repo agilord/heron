@@ -4,6 +4,7 @@
 
 library heron;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:intl/intl.dart' show DateFormat;
@@ -18,81 +19,92 @@ import 'src/static.dart';
 import 'src/templates.dart';
 import 'src/utils.dart';
 
-void processConfig(String configFile) {
+Future processConfig(String configFile) async {
   String baseDir = new File(configFile).parent.path;
   config.buildRoot = '$baseDir/build';
   config.buildSite = '${config.buildRoot}/site';
   config.contentDir = '$baseDir/content';
 
   Map<String, dynamic> site =
-      yaml.loadYaml(new File(configFile).readAsStringSync());
+      yaml.loadYaml(await new File(configFile).readAsString());
 
-  templates.loadSync('$baseDir/template');
+  await templates.load('$baseDir/template');
 
-  List<Map<String, dynamic>> allContent = _processContent(site);
-  processStatic('$baseDir/static');
-  processArchives(site, allContent);
+  List<Map<String, dynamic>> allContent = await _processContent(site);
+  await processStatic('$baseDir/static');
+  await processArchives(site, allContent);
 
-  writeChangeLogSync('${config.buildRoot}/change.log', '${config.buildSite}/');
+  await writeChangeLog(
+      '${config.buildRoot}/change.log', '${config.buildSite}/');
 }
 
-List<Map<String, dynamic>> _processContent(Map<String, dynamic> site) {
+Future<List<Map<String, dynamic>>> _processContent(
+    Map<String, dynamic> site) async {
   List<Map<String, dynamic>> allContent = [];
-  for (var fse in new Directory(config.contentDir).listSync(recursive: true)) {
-    if (fse.path.endsWith('/META.yaml') || fse.path == 'META.yaml') continue;
-    if (fse is File) {
-      Map<String, dynamic> pathmap =
-          pathMetadata.getMetadata(site, config.contentDir, fse.path);
-      pathmap.putIfAbsent(
-          'path', () => getRelativePath(config.contentDir, fse.parent.path));
+  await new Directory(config.contentDir)
+      .list(recursive: true)
+      .asyncMap((fse) => _processContentFile(site, fse, allContent))
+      .drain();
+  return allContent;
+}
 
-      String fileName = fse.path.split('/').last;
-      if (fse.path.endsWith('.md')) {
-        String fileBase = fileName.substring(0, fileName.length - 3);
-        String contentSrc = fse.readAsStringSync();
-        String metaSrc = '';
-        if (contentSrc.startsWith('---\n')) {
-          List<String> split = contentSrc.substring(4).split('\n---\n');
-          if (split.length > 1) {
-            metaSrc = split.first;
-            contentSrc = split.sublist(1).join('\n---\n');
-          }
+Future _processContentFile(Map<String, dynamic> site, FileSystemEntity fse,
+    List<Map<String, dynamic>> allContent) async {
+  if (fse.path.endsWith('/META.yaml') || fse.path == 'META.yaml') return;
+  if (fse is File) {
+    Map<String, dynamic> pathmap =
+        await pathMetadata.getMetadata(site, config.contentDir, fse.path);
+    pathmap.putIfAbsent(
+        'path', () => getRelativePath(config.contentDir, fse.parent.path));
+
+    String fileName = fse.path.split('/').last;
+    if (fse.path.endsWith('.md')) {
+      String fileBase = fileName.substring(0, fileName.length - 3);
+      String contentSrc = await fse.readAsString();
+      String metaSrc = '';
+      if (contentSrc.startsWith('---\n')) {
+        List<String> split = contentSrc.substring(4).split('\n---\n');
+        if (split.length > 1) {
+          metaSrc = split.first;
+          contentSrc = split.sublist(1).join('\n---\n');
         }
-        Map<String, dynamic> metaMap =
-            metaSrc.isNotEmpty ? new Map.from(yaml.loadYaml(metaSrc)) : {};
-        pathmap.forEach((k, v) => metaMap.putIfAbsent(k, () => v));
-        String url = metaMap['url'];
-        if (url == null) {
-          String base = metaMap['path'];
-          if (!base.startsWith('/')) base = '/$base';
-          if (!base.endsWith('/')) base = '$base/';
-          if (fileBase != 'index') {
-            url = '$base$fileBase.html';
-          } else {
-            url = base;
-          }
-          metaMap['url'] = url;
-        }
-        contentSrc = _convertContent(contentSrc, metaMap);
-        metaMap['content'] = md.markdownToHtml(contentSrc);
-        int wordCount = contentSrc.split(new RegExp('\\s+')).length;
-        metaMap['content-readmin'] = (wordCount ~/ 180) + 1;
-        _processExtends(metaMap);
-        _datePreProcessor.processDateAttributes(metaMap);
-        String outFile = url.endsWith('/') ? '${url}index.html' : url;
-        String html = templates.render(new DataMap(metaMap));
-        setFileContentSync('${config.buildSite}$outFile', html);
-        metaMap['copy-to']?.forEach((target) {
-          copyFileSync(new File('${config.buildSite}$outFile'),
-              '${config.buildSite}$target');
-        });
-        allContent.add(metaMap);
-      } else {
-        copyFileSync(fse, '${config.buildSite}/${pathmap['path']}/$fileName');
       }
+      Map<String, dynamic> metaMap =
+          metaSrc.isNotEmpty ? new Map.from(yaml.loadYaml(metaSrc)) : {};
+      pathmap.forEach((k, v) => metaMap.putIfAbsent(k, () => v));
+      String url = metaMap['url'];
+      if (url == null) {
+        String base = metaMap['path'];
+        if (!base.startsWith('/')) base = '/$base';
+        if (!base.endsWith('/')) base = '$base/';
+        if (fileBase != 'index') {
+          url = '$base$fileBase.html';
+        } else {
+          url = base;
+        }
+        metaMap['url'] = url;
+      }
+      contentSrc = _convertContent(contentSrc, metaMap);
+      metaMap['content'] = md.markdownToHtml(contentSrc);
+      int wordCount = contentSrc.split(new RegExp('\\s+')).length;
+      metaMap['content-readmin'] = (wordCount ~/ 180) + 1;
+      _processExtends(metaMap);
+      _datePreProcessor.processDateAttributes(metaMap);
+      String outFile = url.endsWith('/') ? '${url}index.html' : url;
+      String html = templates.render(new DataMap(metaMap));
+      await setFileContent('${config.buildSite}$outFile', html);
+      List<String> copyTos = metaMap['copy-to'];
+      if (copyTos != null) {
+        for (String target in copyTos) {
+          await copyFile(new File('${config.buildSite}$outFile'),
+              '${config.buildSite}$target');
+        }
+      }
+      allContent.add(metaMap);
+    } else {
+      await copyFile(fse, '${config.buildSite}/${pathmap['path']}/$fileName');
     }
   }
-  return allContent;
 }
 
 String _convertContent(String src, Map metaMap) {

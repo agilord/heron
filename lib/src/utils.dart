@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file.
 
+import 'dart:async';
 import 'dart:io';
 
 List<String> updatedFiles = [];
@@ -12,24 +13,24 @@ String getRelativePath(String baseDirectory, String path) {
   return relativePath;
 }
 
-void setFileContentSync(String fileName, String content) {
+Future setFileContent(String fileName, String content) async {
   try {
     File f = new File(fileName);
     if (f.existsSync()) {
-      String oldContent = f.readAsStringSync();
+      String oldContent = await f.readAsString();
       if (content == oldContent) return;
     }
-    f.parent.createSync(recursive: true);
+    await f.parent.create(recursive: true);
     updatedFiles.add(fileName);
     print('Updating file: $fileName');
-    f.writeAsStringSync(content);
+    await f.writeAsString(content);
   } catch (e) {
     print('Exception while processing: $fileName');
     rethrow;
   }
 }
 
-void copyFileSync(File source, String targetPath) {
+Future copyFile(File source, String targetPath) async {
   if (source.path.endsWith('.DS_Store')) return;
   File target = new File(targetPath);
   if (target.existsSync() &&
@@ -38,16 +39,16 @@ void copyFileSync(File source, String targetPath) {
     return;
   }
   updatedFiles.add(targetPath);
-  target.parent.createSync(recursive: true);
+  await target.parent.create(recursive: true);
   print('Copy file: $targetPath');
-  source.copySync(target.path);
+  await source.copy(target.path);
 }
 
-void writeChangeLogSync(String logFile, String prefix) {
+Future writeChangeLog(String logFile, String prefix) {
   String log = updatedFiles
       .where((f) => f.startsWith(prefix))
       .map((f) => f.substring(prefix.length))
       .map((f) => '$f\n')
       .join();
-  new File(logFile).writeAsString(log, mode: FileMode.APPEND);
+  return new File(logFile).writeAsString(log, mode: FileMode.APPEND);
 }

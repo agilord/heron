@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:mustache/mustache.dart' as mustache;
@@ -14,13 +15,13 @@ final Templates templates = new Templates();
 class Templates {
   Map<String, mustache.Template> _templates = {};
 
-  void loadSync(String dir) {
+  Future load(String dir) async {
     for (var fse in new Directory(dir).listSync()) {
       if (fse is File) {
         if (!fse.path.endsWith('.html')) continue;
         String path = getRelativePath(dir, fse.path);
         path = path.substring(0, path.length - 5);
-        String content = fse.readAsStringSync();
+        String content = await fse.readAsString();
         _templates[path] = new mustache.Template(content,
             lenient: true,
             name: path,
