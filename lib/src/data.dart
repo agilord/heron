@@ -3,71 +3,126 @@
 // that can be found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:yaml/yaml.dart' as yaml;
 
-import 'utils.dart';
+class Data {
+  Map<String, dynamic> _map;
 
-final PathMetadata pathMetadata = new PathMetadata();
+  factory Data() => new Data.fromMap({});
+  Data.fromMap(this._map);
+  factory Data.fromYaml(String content) =>
+      new Data.fromMap(yaml.loadYaml(content));
 
-class DataMap {
-  final Map _map = {};
-
-  DataMap([Map map]) {
-    this._map.addAll(map);
+  factory Data.merge(Iterable<Data> list) {
+    Data result = new Data();
+    for (Data data in list) {
+      _mergeOver(result._map, data._map);
+    }
+    return result;
   }
 
-  List<String> get dateAttributes => _map['date-attributes'] ?? const ['published', 'updated'];
-
-  String get template => _map['template'] ?? 'page';
-
-  String get lang => _map['lang'] ?? 'en';
-
-  String get datePattern => _map['date-pattern'] ?? 'yyyy-MM-dd';
-
-  Map get asMap => _map;
-
-  DataMap fork([Map map]) {
-    DataMap forked = new DataMap(this._map);
-    if (map != null) {
-      forked._map.addAll(map);
+  static Future<Data> loadFile(String path, {bool mustExist: false}) async {
+    File f = new File(path);
+    if (f.existsSync()) {
+      String content = await f.readAsString();
+      if (path.endsWith('.yml') || path.endsWith('.yaml')) {
+        return new Data.fromYaml(content);
+      } else if (path.endsWith('.json')) {
+        return new Data.fromMap(JSON.decode(content));
+      } else if (path.endsWith('.md')) {
+        return new MarkdownContent.parseSource(content).header;
+      }
+    } else if (mustExist) {
+      throw new Exception('File does not exist: $path');
+    } else {
+      return new Data();
     }
-    return forked;
+    throw new Exception('Unhandled case for $path');
+  }
+
+  static Future<List<Data>> loadAll(Iterable<String> dirs, String file) async {
+    List<Data> list = <Data>[];
+    for (String dir in dirs) {
+      Data d = await loadFile('$dir/$file');
+      list.add(d);
+    }
+    return list;
+  }
+
+  static void _mergeOver(Map m1, Map m2) {
+    m2.forEach((String key, dynamic value) {
+      if (value is Map && m1[key] is Map) {
+        Map v1 = m1[key];
+        _mergeOver(v1, value);
+      } else {
+        m1[key] = value;
+      }
+    });
+  }
+
+  dynamic operator [](String key) => _map[key];
+  void operator []=(String key, dynamic value) {
+    _map[key] = value;
+  }
+
+  Map<String, dynamic> get asMap => _map;
+
+  Data fork() => new Data.fromMap(JSON.decode(JSON.encode(_map)));
+
+  dynamic putIfAbsent(String key, dynamic ifAbsent()) =>
+      _map.putIfAbsent(key, ifAbsent);
+}
+
+class MarkdownContent {
+  Data header;
+  String markdown;
+
+  MarkdownContent(this.header, this.markdown);
+
+  factory MarkdownContent.parseSource(String source, {Data header}) {
+    String meta = '';
+    String body = source;
+    if (source.startsWith('---\n')) {
+      List<String> split = source.substring(4).split('\n---\n');
+      if (split.length > 1) {
+        meta = split.first;
+        body = split.sublist(1).join('\n---\n');
+      }
+    }
+    Data data = meta.isNotEmpty ? new Data.fromYaml(meta) : new Data();
+    if (header != null) {
+      data = new Data.merge([header, data]);
+    }
+    return new MarkdownContent(data, body);
   }
 }
 
-class PathMetadata {
-  Map<String, Map<String, dynamic>> _maps = {};
+abstract class PageDB {
+  Future<Null> store(Data data);
+  Future<Null> delete(String url);
+  Stream<Data> list();
+}
 
-  Future<Map<String, dynamic>> getMetadata(
-      Map<String, dynamic> siteconfig, String baseDir, String path) async {
-    List<String> paths = '/${getRelativePath(baseDir, path)}'.split('/')
-      ..removeLast();
-    Map<String, dynamic> map = {};
-    _merge(map, siteconfig);
-    for (int i = 0; i <= paths.length; i++) {
-      String joined = paths.sublist(0, i).join('/');
-      Map<String, dynamic> m = await _get('$baseDir/$joined');
-      _merge(map, m);
-    }
-    return map;
+class MemoryPageDB implements PageDB {
+  Map<String, Data> _pages = {};
+
+  @override
+  Future<Null> store(Data data) async {
+    _pages[data['url']] = data;
   }
 
-  Future<Map<String, dynamic>> _get(String p) async {
-    Map<String, dynamic> m = _maps[p];
-    if (m == null) {
-      File f = new File('$p/META.yaml');
-      if (f.existsSync()) {
-        m = yaml.loadYaml(await f.readAsString());
-        _maps[p] = m;
-      }
-    }
-    return m;
+  @override
+  Future<Null> delete(String url) async {
+    _pages.remove(url);
   }
 
-  void _merge(Map<String, dynamic> map, Map<String, dynamic> m) {
-    if (m == null) return;
-    map.addAll(m);
+  @override
+  Stream<Data> list() async* {
+    for (Data data in _pages.values) {
+      yield data;
+    }
   }
 }

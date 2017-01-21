@@ -1,0 +1,58 @@
+  <meta charset="utf-8" />
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <meta name="language" content="{{page.lang}}"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content="Heron Static Site Generator 0.1" />
+  {{#site.favicon}}
+  <link rel="shortcut icon" href="{{{site.favicon}}}" />
+  <link rel="apple-touch-icon" href="{{{site.favicon}}}" />
+  {{/site.favicon}}
+  {{#page.title}}
+  <title>{{page.title}}</title>
+  <meta itemprop="name" content="{{page.title}}" />
+  <meta property="og:title" content="{{page.title}}" />
+  <meta name="twitter:title" content="{{page.title}}" />
+  {{/page.title}}
+  {{#page.url}}
+  <link rel="canonical" href="{{{site.url}}}{{{page.url}}}" />
+  <meta property="og:url" content="{{{site.url}}}{{{page.url}}}" />
+  <meta name="twitter:url" content="{{{site.url}}}{{{page.url}}}" />
+  {{/page.url}}
+  {{#page.article}}
+  <meta property="og:type" content="article" />
+    {{^page.image}}
+  <meta name="twitter:card" content="summary" />
+    {{/page.image}}
+  {{/page.article}}
+  {{#page.image}}
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta itemprop="image" content="{{{page.image}}}" />
+  <meta property="og:image" content="{{{page.image}}}" />
+  <meta name="twitter:image" content="{{{page.image}}}" />
+  {{/page.image}}
+  {{#site.name}}
+  <meta property="og:site_name" content="{{site.name}}" />
+  {{/site.name}}
+  {{#page.description}}
+  <meta name="description" content="{{page.description}}" />
+  <meta property="og:description" content="{{page.description}}" />
+  <meta name="twitter:description" content="{{page.description}}" />
+  {{/page.description}}
+  {{#page.keywords}}
+  <meta name="keywords" content="{{page.keywords}}" />
+  {{/page.keywords}}
+  {{#site.styles}}
+  <link type="text/css" rel="stylesheet" href="{{{href}}}"{{#media}} media="{{{media}}}"{{/media}}/>
+  {{/site.styles}}
+  {{#page.styles}}
+  <link type="text/css" rel="stylesheet" href="{{{href}}}"{{#media}} media="{{{media}}}"{{/media}}/>
+  {{/page.styles}}
+  {{#site.scripts}}
+  <script src="{{{href}}}"{{#async}} async{{/async}}{{#defer}} defer{{/defer}}{{#onload}} onload="{{{onload}}}"{{/onload}}></script>
+  {{/site.scripts}}
+  {{#page.scripts}}
+  <script src="{{{href}}}"{{#async}} async{{/async}}{{#defer}} defer{{/defer}}{{#onload}} onload="{{{onload}}}"{{/onload}}></script>
+  {{/page.scripts}}
+  {{#page.translations}}
+  <link rel="alternate" hreflang="{{lang}}" href="{{{href}}}" />
+  {{/page.translations}}
