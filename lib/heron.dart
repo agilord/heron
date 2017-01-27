@@ -125,7 +125,7 @@ class Heron {
 
   Future<Data> preProcessStatic(Data page, File file) async {
     String path = file.path;
-    String fileName = path.split('/').last;
+    String fileName = path.split(Platform.pathSeparator).last;
     if (fileName == 'PAGE.yaml') return null;
     if (fileName == 'SITE.yaml') return null;
     return page;

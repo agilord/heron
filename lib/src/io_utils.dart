@@ -5,8 +5,16 @@
 import 'dart:async';
 import 'dart:io';
 
+// TODO: implement/apply better path handling
+// e.g. file names that contain `/` or `\` are handled in a bad way
+String getUnixPath(String path) => path.replaceAll(Platform.pathSeparator, '/');
+
+String getPlatformPath(String path) =>
+    path.replaceAll('/', Platform.pathSeparator);
+
 String getRelativePath(FileSystemEntity file, String baseDir) {
-  String path = file.path;
+  String path = getUnixPath(file.path);
+  baseDir = getUnixPath(baseDir);
   if (!path.startsWith(baseDir)) {
     throw new Exception('Wrong base directory: $baseDir for $path');
   }
@@ -16,7 +24,8 @@ String getRelativePath(FileSystemEntity file, String baseDir) {
 }
 
 List<Directory> getParentDirs(File file, String baseDir) {
-  String path = file.path;
+  String path = getUnixPath(file.path);
+  baseDir = getUnixPath(baseDir);
   if (!path.startsWith(baseDir)) {
     throw new Exception('Wrong base directory: $baseDir for $path');
   }
@@ -40,10 +49,10 @@ class SiteOutput {
   SiteOutput(this.siteDir);
 
   Future<Null> copyFileTo(File source, String relativePath) async {
-    if (source.path.endsWith('/.DS_Store')) return;
+    if (getUnixPath(source.path).endsWith('/.DS_Store')) return;
     String path = _removeSlash(relativePath);
     String targetPath = '$siteDir/$path';
-    File target = new File(targetPath);
+    File target = new File(getPlatformPath(targetPath));
     if (target.existsSync() &&
         target.lengthSync() == source.lengthSync() &&
         target.lastModifiedSync() == source.lastModifiedSync()) {
@@ -52,7 +61,7 @@ class SiteOutput {
     updatedFiles.add(path);
     await target.parent.create(recursive: true);
     print('Copy file: $path');
-    await source.copy(target.path);
+    await source.copy(getPlatformPath(target.path));
   }
 
   Future<Null> copyAll(String directory) async {
@@ -68,7 +77,7 @@ class SiteOutput {
     try {
       String path = _removeSlash(relativePath);
       String fileName = '$siteDir/$path';
-      File target = new File(fileName);
+      File target = new File(getPlatformPath(fileName));
       if (target.existsSync()) {
         String oldContent = await target.readAsString();
         if (content == oldContent) return;
@@ -85,7 +94,8 @@ class SiteOutput {
 
   Future<Null> writeChangeLogTo(String logFile) async {
     String log = updatedFiles.map((String f) => '$f\n').join();
-    await new File(logFile).writeAsString(log, mode: FileMode.APPEND);
+    await new File(getPlatformPath(logFile))
+        .writeAsString(log, mode: FileMode.APPEND);
   }
 
   String _removeSlash(String path) {
