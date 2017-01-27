@@ -55,7 +55,14 @@ class Templates {
         partialResolver: _resolver);
   }
 
-  mustache.Template _resolver(String templateName) => _templates[templateName];
+  mustache.Template _resolver(String templateName) {
+    if (!_templates.containsKey(templateName)) {
+      List<String> templates = new List.from(_templates.keys)..sort();
+      throw new Exception('Template not found: $templateName.\n'
+          'Loaded templates: $templates.');
+    }
+    return _templates[templateName];
+  }
 }
 
 class _MustacheAdapter implements mustache.Template {
