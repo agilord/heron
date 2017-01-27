@@ -1,6 +1,6 @@
 name: heron
 description: A static site generator.
-version: 0.1.0
+version: 0.1.1
 author: Istvan Soos <istvan.soos@agilord.com>
 
 homepage: https://github.com/agilord/heron
