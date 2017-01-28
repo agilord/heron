@@ -28,6 +28,9 @@ class Data {
     File f = new File(path);
     if (f.existsSync()) {
       String content = await f.readAsString();
+      if (content.trim().isEmpty) {
+        return new Data();
+      }
       if (path.endsWith('.yml') || path.endsWith('.yaml')) {
         return new Data.fromYaml(content);
       } else if (path.endsWith('.json')) {
@@ -53,6 +56,7 @@ class Data {
   }
 
   static void _mergeOver(Map m1, Map m2) {
+    if (m2 == null) return;
     m2.forEach((String key, dynamic value) {
       if (value is Map && m1[key] is Map) {
         Map v1 = m1[key];
