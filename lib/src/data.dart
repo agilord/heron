@@ -89,6 +89,8 @@ class MarkdownContent {
   factory MarkdownContent.parseSource(String source, {Data header}) {
     String meta = '';
     String body = source;
+    // fixme: source should be trimmed or regexp be used to ignore leading whitespace
+    // fixme: should allow arbitrary number of - over 2
     if (source.startsWith('---\n')) {
       List<String> split = source.substring(4).split('\n---\n');
       if (split.length > 1) {

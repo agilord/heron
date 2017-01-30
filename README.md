@@ -11,7 +11,8 @@ The two major features that are different from most of similar tools:
 ## Links
 
 - [source code][source]
-- contributors: [Agilord][agilord]
+- contributors: [Agilord][agilord], [Daniel Varga-H.][daniel-v]
 
 [source]: https://github.com/agilord/heron
 [agilord]: https://www.agilord.com/
+[daniel-v]: https://github.com/daniel-v/
